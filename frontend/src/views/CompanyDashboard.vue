@@ -8,15 +8,82 @@
     <div class="card mb-4">
       <div class="card-body">
         <h5 class="card-title">Create New Drive</h5>
-        <form @submit.prevent="handleCreateDrive" class="row g-2">
-          <div class="col-md-4"><input v-model="newDrive.title" class="form-control" placeholder="Title" required /></div>
-          <div class="col-md-3"><input v-model="newDrive.package" class="form-control" placeholder="Package (e.g. 6 LPA)" /></div>
-          <div class="col-md-2"><input v-model.number="newDrive.min_cgpa" type="number" step="0.1" class="form-control" placeholder="Min CGPA" /></div>
-          <div class="col-md-3"><textarea v-model="newDrive.description" class="form-control" placeholder="Description"></textarea></div>
-          <div class="col-md-4 mt-2"><input v-model="newDrive.eligible_branches" class="form-control" placeholder="Eligible branches (comma-separated)" /></div>
-          <div class="col-md-3 mt-2"><input v-model="newDrive.eligible_years" class="form-control" placeholder="Eligible years (comma-separated)" /></div>
-          <div class="col-md-5 mt-2"><input v-model="newDrive.application_deadline" type="datetime-local" class="form-control" placeholder="Application deadline" /></div>
-          <div class="col-12"><button class="btn btn-primary btn-sm">Submit for Approval</button></div>
+        
+        <form @submit.prevent="handleCreateDrive" class="card p-3 shadow-sm">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div>
+              <h5 class="mb-0">Create New Drive</h5>
+              <small class="text-muted">Keep it short and attractive — students notice clear titles.</small>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @click="showAdvanced = !showAdvanced">
+              {{ showAdvanced ? 'Hide Advanced' : 'Advanced options' }}
+            </button>
+          </div>
+
+          <div class="row g-2 mb-2">
+            <div class="col-12">
+              <label class="form-label">Job Title</label>
+              <input v-model="newDrive.title" class="form-control form-control-lg" placeholder="Job title (e.g., Software Engineer - Intern)" required aria-label="Job Title" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Package</label>
+              <input v-model="newDrive.salary_package" class="form-control" placeholder="Package (e.g., 6 LPA)" aria-label="Package" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Location</label>
+              <input v-model="newDrive.location" class="form-control" placeholder="Location (City or Remote)" aria-label="Location" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Min CGPA</label>
+              <input v-model.number="newDrive.min_cgpa" class="form-control" placeholder="Min CGPA (optional)" aria-label="Minimum CGPA" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Application Deadline</label>
+              <input v-model="newDrive.application_deadline" type="datetime-local" class="form-control" aria-label="Application Deadline" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Drive / Interview Date</label>
+              <input v-model="newDrive.drive_date" type="datetime-local" class="form-control" aria-label="Drive Date" />
+            </div>
+          </div>
+
+          <transition name="fade">
+            <div v-if="showAdvanced" class="border rounded p-3 bg-light">
+              <div class="mb-2">
+                <label class="form-label">Short Description</label>
+                <textarea v-model="newDrive.description" class="form-control" rows="3" placeholder="Short description for students (what makes this role exciting?)" aria-label="Description"></textarea>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Skills Required</label>
+                  <input v-model="newDrive.skills_required" class="form-control" placeholder="Skills required (comma-separated)" aria-label="Skills Required" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Eligible Branches</label>
+                  <input v-model="newDrive.eligible_branches" class="form-control" placeholder="Eligible branches (comma-separated)" aria-label="Eligible Branches" />
+                </div>
+                <div class="col-md-4 mt-2">
+                  <label class="form-label">Eligible Years</label>
+                  <input v-model="newDrive.eligible_years" class="form-control" placeholder="Eligible years (comma-separated)" aria-label="Eligible Years" />
+                </div>
+                <div class="col-md-4 mt-2">
+                  <label class="form-label">Job Type</label>
+                  <input v-model="newDrive.job_type" class="form-control" placeholder="Job type" aria-label="Job Type" />
+                </div>
+                <div class="col-md-4 mt-2">
+                  <label class="form-label">Employment Type</label>
+                  <input v-model="newDrive.employment_type" class="form-control" placeholder="Employment type" aria-label="Employment Type" />
+                </div>
+              </div>
+            </div>
+          </transition>
+
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="text-danger" v-if="errorMessage">{{ errorMessage }}</div>
+            <div>
+              <button class="btn btn-primary">Submit for Approval</button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
@@ -99,7 +166,23 @@ export default {
       myDrives: [],
       applicants: [],
       selectedDriveId: null,
-        newDrive: { title: '', package: '', min_cgpa: 0, description: '', eligible_branches: '', eligible_years: '', application_deadline: '' },
+      newDrive: {
+        title: '',
+        package: '',
+        salary_package: '',
+        location: '',
+        job_type: '',
+        employment_type: '',
+        placement_mode: '',
+        min_cgpa: 0,
+        description: '',
+        skills_required: '',
+        eligible_branches: '',
+        eligible_years: '',
+        application_deadline: '',
+        drive_date: '',
+      },
+      showAdvanced: false,
       errorMessage: '',
       successMessage: '',
       pendingStatusChange: null,
@@ -119,6 +202,20 @@ export default {
     async handleCreateDrive() {
       this.errorMessage = ''
       this.successMessage = ''
+      // Client-side validation: ensure application_deadline is before or equal to drive_date
+      if (this.newDrive.application_deadline && this.newDrive.drive_date) {
+        const appDead = new Date(this.newDrive.application_deadline)
+        const drv = new Date(this.newDrive.drive_date)
+        if (isNaN(appDead.getTime()) || isNaN(drv.getTime())) {
+          this.errorMessage = 'Invalid date format'
+          return
+        }
+        if (appDead > drv) {
+          this.errorMessage = 'Application deadline must be before or equal to the drive date'
+          return
+        }
+      }
+
       try {
         await apiRequest('/drives', {
           method: 'POST',
@@ -126,7 +223,22 @@ export default {
           body: this.newDrive,
         })
         this.successMessage = 'Drive submitted for admin approval'
-        this.newDrive = { title: '', package: '', min_cgpa: 0, description: '' }
+        this.newDrive = {
+          title: '',
+          package: '',
+          salary_package: '',
+          location: '',
+          job_type: '',
+          employment_type: '',
+          placement_mode: '',
+          min_cgpa: 0,
+          description: '',
+          skills_required: '',
+          eligible_branches: '',
+          eligible_years: '',
+          application_deadline: '',
+          drive_date: '',
+        }
         await this.loadMyDrives()
       } catch (err) {
         this.errorMessage = err.message

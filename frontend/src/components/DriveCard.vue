@@ -4,7 +4,8 @@
       <div>
         <h6>{{ drive.title }}</h6>
         <p class="company-line">{{ drive.company }}</p>
-        <p class="meta-line">{{ drive.package || 'Package not specified' }} · Min CGPA: {{ drive.min_cgpa }}</p>
+        <p class="meta-line">{{ drive.package || 'Package not specified' }} · {{ drive.location || 'Location TBD' }} · Min CGPA: {{ drive.min_cgpa }}</p>
+        <p v-if="drive.skills_required" class="meta-line">Skills: {{ drive.skills_required }}</p>
       </div>
       <button 
         v-if="showApplyButton" 

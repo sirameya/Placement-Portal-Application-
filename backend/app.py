@@ -37,8 +37,8 @@ app.register_blueprint(drives_bp)
 
 
 def create_tables_and_seed_admin():
-    """Creates all tables, then seeds ONE admin account if none exists —
-    matching 'Admin is a pre-existing superuser, no admin registration'."""
+    """Rebuilds the schema from the current models and seeds one admin account."""
+    db.drop_all()
     db.create_all()
 
     if not User.query.filter_by(role="admin").first():

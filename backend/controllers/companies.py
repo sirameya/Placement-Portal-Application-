@@ -28,6 +28,12 @@ def my_profile():
         "company_name": company.company_name,
         "hr_contact": company.hr_contact,
         "website": company.website,
+        "industry": company.industry,
+        "address": company.address,
+        "contact_email": company.contact_email,
+        "phone_number": company.phone_number,
+        "description": company.description,
+        "employee_count": company.employee_count,
         "approval_status": company.approval_status,
         "drives_created": len(company.jobs),
     })
@@ -46,6 +52,13 @@ def list_companies():
             "hr_contact": c.hr_contact,
             "website": c.website,
             "approval_status": c.approval_status,
+            "industry": c.industry,
+            "address": c.address,
+            "contact_email": c.contact_email,
+            "phone_number": c.phone_number,
+            "description": c.description,
+            "employee_count": c.employee_count,
+            "is_active": c.user.is_active if c.user else True,
         }
         for c in companies
     ])
@@ -85,3 +98,12 @@ def search_companies():
     q = request.args.get("q", "")
     matches = CompanyProfile.query.filter(CompanyProfile.company_name.ilike(f"%{q}%")).all()
     return jsonify([{"id": c.id, "company_name": c.company_name} for c in matches])
+
+
+@companies_bp.route("/<int:company_id>/toggle-active", methods=["POST"])
+@role_required("admin")
+def toggle_company_active(company_id):
+    company = CompanyProfile.query.get_or_404(company_id)
+    company.user.is_active = not company.user.is_active
+    db.session.commit()
+    return jsonify({"message": f"Company account {'activated' if company.user.is_active else 'deactivated'}"})

@@ -19,6 +19,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # 'admin' | 'company' | 'student'
+    is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     student_profile = db.relationship("StudentProfile", backref="user", uselist=False)
@@ -37,6 +38,10 @@ class StudentProfile(db.Model):
     cgpa = db.Column(db.Float)
     skills = db.Column(db.String(500))
     resume_path = db.Column(db.String(255))
+    phone = db.Column(db.String(30))
+    address = db.Column(db.String(255))
+    portfolio_url = db.Column(db.String(255))
+    linkedin_url = db.Column(db.String(255))
 
     applications = db.relationship("Application", backref="student", lazy=True)
 
@@ -50,6 +55,12 @@ class CompanyProfile(db.Model):
     company_name = db.Column(db.String(120), nullable=False)
     hr_contact = db.Column(db.String(120))
     website = db.Column(db.String(255))
+    industry = db.Column(db.String(120))
+    address = db.Column(db.String(255))
+    contact_email = db.Column(db.String(120))
+    phone_number = db.Column(db.String(30))
+    description = db.Column(db.Text)
+    employee_count = db.Column(db.Integer)
     approval_status = db.Column(db.String(20), default="pending")  # pending | approved | rejected
 
     jobs = db.relationship("Job", backref="company", lazy=True)
@@ -65,12 +76,19 @@ class Job(db.Model):
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.Text)
     package = db.Column(db.String(50))
+    salary_package = db.Column(db.String(50))
+    location = db.Column(db.String(120))
+    job_type = db.Column(db.String(50))
+    employment_type = db.Column(db.String(50))
+    skills_required = db.Column(db.String(500))
+    placement_mode = db.Column(db.String(50))
     min_cgpa = db.Column(db.Float, default=0.0)
     # Eligibility: comma-separated branches and years (stored as simple CSV)
     eligible_branches = db.Column(db.String(255))
     eligible_years = db.Column(db.String(255))
     # Optional application deadline; students cannot apply after this
     application_deadline = db.Column(db.DateTime)
+    drive_date = db.Column(db.DateTime)
     approval_status = db.Column(db.String(20), default="pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -87,6 +105,10 @@ class Application(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey("jobs.id"), nullable=False)
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default="applied")  # applied | shortlisted | selected | rejected
+    resume_path = db.Column(db.String(255))
+    cover_letter = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         db.UniqueConstraint("student_id", "job_id", name="unique_student_job_application"),

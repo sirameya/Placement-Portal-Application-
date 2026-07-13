@@ -35,7 +35,7 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "An account with this email already exists"}), 409
 
-    user = User(email=email, password_hash=generate_password_hash(password), role=role)
+    user = User(email=email, password_hash=generate_password_hash(password), role=role, is_active=True)
     db.session.add(user)
     db.session.flush()  # gives us user.id before committing, to link the profile
 
@@ -48,6 +48,10 @@ def register():
             cgpa=data.get("cgpa"),  # CGPA is optional during registration
             branch=data.get("branch"),
             year=data.get("year"),
+            phone=data.get("phone"),
+            address=data.get("address"),
+            portfolio_url=data.get("portfolio_url"),
+            linkedin_url=data.get("linkedin_url"),
         )
     else:  # company
         if not data.get("company_name"):
@@ -57,6 +61,12 @@ def register():
             company_name=data["company_name"],
             hr_contact=data.get("hr_contact"),
             website=data.get("website"),
+            industry=data.get("industry"),
+            address=data.get("address"),
+            contact_email=data.get("contact_email"),
+            phone_number=data.get("phone_number"),
+            description=data.get("description"),
+            employee_count=data.get("employee_count"),
             approval_status="pending",
         )
 
@@ -79,6 +89,9 @@ def login():
     user = User.query.filter_by(email=email).first()
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Invalid email or password"}), 401
+
+    if not user.is_active:
+        return jsonify({"error": "This account has been deactivated"}), 403
 
     if user.role == "company" and user.company_profile.approval_status != "approved":
         return jsonify({"error": f"Company account is {user.company_profile.approval_status} by admin"}), 403

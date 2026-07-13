@@ -45,7 +45,11 @@ def browse_drives():
 
     return jsonify([
         {"id": j.id, "title": j.title, "company": j.company.company_name,
-         "package": j.package, "min_cgpa": j.min_cgpa, "status": j.approval_status}
+         "package": j.package, "salary_package": j.salary_package, "location": j.location,
+         "job_type": j.job_type, "employment_type": j.employment_type, "skills_required": j.skills_required,
+         "placement_mode": j.placement_mode, "min_cgpa": j.min_cgpa, "status": j.approval_status,
+         "application_deadline": j.application_deadline.isoformat() if j.application_deadline else None,
+         "drive_date": j.drive_date.isoformat() if j.drive_date else None}
         for j in jobs
     ])
 
@@ -95,7 +99,8 @@ def my_applications():
     return jsonify([
         {"application_id": a.id, "drive_title": a.job.title,
          "company": a.job.company.company_name, "status": a.status,
-         "applied_on": a.application_date.strftime("%Y-%m-%d")}
+         "applied_on": a.application_date.strftime("%Y-%m-%d"),
+         "resume_path": a.resume_path, "cover_letter": a.cover_letter, "notes": a.notes}
         for a in student.applications
     ])
 
@@ -158,9 +163,16 @@ def search_students():
 @students_bp.route("/<int:student_id>/blacklist", methods=["POST"])
 @role_required("admin")
 def blacklist_student(student_id):
-    """Locks the student out by invalidating their password hash.
-    A cleaner future version would add an `is_active` boolean to User."""
     student = StudentProfile.query.get_or_404(student_id)
-    student.user.password_hash = "!blacklisted!"
+    student.user.is_active = False
     db.session.commit()
-    return jsonify({"message": f"{student.name} has been blacklisted"})
+    return jsonify({"message": f"{student.name} has been deactivated"})
+
+
+@students_bp.route("/<int:student_id>/toggle-active", methods=["POST"])
+@role_required("admin")
+def toggle_student_active(student_id):
+    student = StudentProfile.query.get_or_404(student_id)
+    student.user.is_active = not student.user.is_active
+    db.session.commit()
+    return jsonify({"message": f"Student account {'activated' if student.user.is_active else 'deactivated'}"})
