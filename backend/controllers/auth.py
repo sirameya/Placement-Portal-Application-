@@ -42,7 +42,11 @@ def register():
     if role == "student":
         if not data.get("name"):
             return jsonify({"error": "name is required for student registration"}), 400
-        profile = StudentProfile(user_id=user.id, name=data["name"])
+        profile = StudentProfile(
+            user_id=user.id,
+            name=data["name"],
+            cgpa=data.get("cgpa"),  # CGPA is optional during registration
+        )
     else:  # company
         if not data.get("company_name"):
             return jsonify({"error": "company_name is required for company registration"}), 400

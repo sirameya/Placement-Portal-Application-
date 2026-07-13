@@ -31,11 +31,19 @@ def _get_student_profile():
 @students_bp.route("/drives", methods=["GET"])
 @role_required("student")
 def browse_drives():
-    """Only approved drives are visible to students."""
-    jobs = Job.query.filter_by(approval_status="approved").all()
+    """Students can filter by active or past drives.
+    active = approved drives
+    past = rejected drives
+    """
+    filter_type = request.args.get("filter", "active")
+    if filter_type == "past":
+        jobs = Job.query.filter_by(approval_status="rejected").all()
+    else:
+        jobs = Job.query.filter_by(approval_status="approved").all()
+
     return jsonify([
         {"id": j.id, "title": j.title, "company": j.company.company_name,
-         "package": j.package, "min_cgpa": j.min_cgpa}
+         "package": j.package, "min_cgpa": j.min_cgpa, "status": j.approval_status}
         for j in jobs
     ])
 
@@ -72,6 +80,20 @@ def my_applications():
          "applied_on": a.application_date.strftime("%Y-%m-%d")}
         for a in student.applications
     ])
+
+
+@students_bp.route("/profile", methods=["GET"])
+@role_required("student")
+def get_profile():
+    """Retrieve the logged-in student's profile including CGPA."""
+    student = _get_student_profile()
+    return jsonify({
+        "id": student.id,
+        "name": student.name,
+        "cgpa": student.cgpa,
+        "skills": student.skills,
+        "resume_path": student.resume_path
+    })
 
 
 @students_bp.route("/profile", methods=["PATCH"])

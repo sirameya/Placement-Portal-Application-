@@ -35,6 +35,22 @@ def my_profile():
 
 # ─────────────────────────── Admin-on-company actions ───────────────────────────
 
+@companies_bp.route("/all", methods=["GET"])
+@role_required("admin")
+def list_companies():
+    companies = CompanyProfile.query.order_by(CompanyProfile.company_name).all()
+    return jsonify([
+        {
+            "id": c.id,
+            "company_name": c.company_name,
+            "hr_contact": c.hr_contact,
+            "website": c.website,
+            "approval_status": c.approval_status,
+        }
+        for c in companies
+    ])
+
+
 @companies_bp.route("/pending", methods=["GET"])
 @role_required("admin")
 def list_pending():

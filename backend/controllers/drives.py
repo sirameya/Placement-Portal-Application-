@@ -90,6 +90,40 @@ def update_application_status(application_id):
 
 # ─────────────────────────── Admin: approve drives + stats ───────────────────────────
 
+@drives_bp.route("/active", methods=["GET"])
+@role_required("admin")
+def list_active_drives():
+    jobs = Job.query.filter_by(approval_status="approved").all()
+    return jsonify([
+        {
+            "id": j.id,
+            "title": j.title,
+            "company": j.company.company_name,
+            "package": j.package,
+            "min_cgpa": j.min_cgpa,
+            "created_at": j.created_at.strftime("%Y-%m-%d"),
+        }
+        for j in jobs
+    ])
+
+
+@drives_bp.route("/past", methods=["GET"])
+@role_required("admin")
+def list_past_drives():
+    jobs = Job.query.filter_by(approval_status="rejected").all()
+    return jsonify([
+        {
+            "id": j.id,
+            "title": j.title,
+            "company": j.company.company_name,
+            "package": j.package,
+            "min_cgpa": j.min_cgpa,
+            "created_at": j.created_at.strftime("%Y-%m-%d"),
+        }
+        for j in jobs
+    ])
+
+
 @drives_bp.route("/pending", methods=["GET"])
 @role_required("admin")
 def list_pending_drives():
