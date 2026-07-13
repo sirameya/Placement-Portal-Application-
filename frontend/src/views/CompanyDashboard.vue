@@ -13,6 +13,9 @@
           <div class="col-md-3"><input v-model="newDrive.package" class="form-control" placeholder="Package (e.g. 6 LPA)" /></div>
           <div class="col-md-2"><input v-model.number="newDrive.min_cgpa" type="number" step="0.1" class="form-control" placeholder="Min CGPA" /></div>
           <div class="col-md-3"><textarea v-model="newDrive.description" class="form-control" placeholder="Description"></textarea></div>
+          <div class="col-md-4 mt-2"><input v-model="newDrive.eligible_branches" class="form-control" placeholder="Eligible branches (comma-separated)" /></div>
+          <div class="col-md-3 mt-2"><input v-model="newDrive.eligible_years" class="form-control" placeholder="Eligible years (comma-separated)" /></div>
+          <div class="col-md-5 mt-2"><input v-model="newDrive.application_deadline" type="datetime-local" class="form-control" placeholder="Application deadline" /></div>
           <div class="col-12"><button class="btn btn-primary btn-sm">Submit for Approval</button></div>
         </form>
       </div>
@@ -96,7 +99,7 @@ export default {
       myDrives: [],
       applicants: [],
       selectedDriveId: null,
-      newDrive: { title: '', package: '', min_cgpa: 0, description: '' },
+        newDrive: { title: '', package: '', min_cgpa: 0, description: '', eligible_branches: '', eligible_years: '', application_deadline: '' },
       errorMessage: '',
       successMessage: '',
       pendingStatusChange: null,

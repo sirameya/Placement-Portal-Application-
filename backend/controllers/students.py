@@ -13,7 +13,9 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 from controllers.database import db
 from controllers.models import StudentProfile, Job, Application
+from controllers.models import Interview
 from utils.decorators import role_required
+from datetime import datetime
 
 students_bp = Blueprint("students", __name__, url_prefix="/api/students")
 
@@ -57,6 +59,22 @@ def apply_to_drive(job_id):
     if job.approval_status != "approved":
         return jsonify({"error": "This drive is not open for applications"}), 400
 
+    # Check application deadline
+    if job.application_deadline and datetime.utcnow() > job.application_deadline:
+        return jsonify({"error": "The application deadline for this drive has passed"}), 400
+
+    # Check branch eligibility if provided
+    if job.eligible_branches:
+        allowed = [b.strip().lower() for b in job.eligible_branches.split(",") if b.strip()]
+        if not student.branch or student.branch.strip().lower() not in allowed:
+            return jsonify({"error": "You are not eligible for this drive based on branch"}), 400
+
+    # Check year eligibility if provided
+    if job.eligible_years:
+        allowed_years = [y.strip() for y in job.eligible_years.split(",") if y.strip()]
+        if not student.year or str(student.year) not in allowed_years:
+            return jsonify({"error": "You are not eligible for this drive based on year"}), 400
+
     if student.cgpa is not None and student.cgpa < job.min_cgpa:
         return jsonify({"error": f"Minimum CGPA required is {job.min_cgpa}"}), 400
 
@@ -82,6 +100,24 @@ def my_applications():
     ])
 
 
+@students_bp.route("/interviews", methods=["GET"])
+@role_required("student")
+def my_interviews():
+    student = _get_student_profile()
+    interviews = []
+    for app in student.applications:
+        for iv in app.interviews:
+            interviews.append({
+                "interview_id": iv.id,
+                "drive_title": app.job.title,
+                "company": app.job.company.company_name,
+                "scheduled_at": iv.scheduled_at.isoformat() if iv.scheduled_at else None,
+                "location": iv.location,
+                "status": iv.status,
+            })
+    return jsonify(interviews)
+
+
 @students_bp.route("/profile", methods=["GET"])
 @role_required("student")
 def get_profile():
@@ -101,7 +137,7 @@ def get_profile():
 def update_profile():
     student = _get_student_profile()
     data = request.get_json()
-    for field in ("name", "cgpa", "skills", "resume_path"):
+    for field in ("name", "cgpa", "branch", "year", "skills", "resume_path"):
         if field in data:
             setattr(student, field, data[field])
     db.session.commit()

@@ -32,6 +32,8 @@ class StudentProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
     name = db.Column(db.String(120), nullable=False)
+    branch = db.Column(db.String(80))
+    year = db.Column(db.Integer)
     cgpa = db.Column(db.Float)
     skills = db.Column(db.String(500))
     resume_path = db.Column(db.String(255))
@@ -64,6 +66,11 @@ class Job(db.Model):
     description = db.Column(db.Text)
     package = db.Column(db.String(50))
     min_cgpa = db.Column(db.Float, default=0.0)
+    # Eligibility: comma-separated branches and years (stored as simple CSV)
+    eligible_branches = db.Column(db.String(255))
+    eligible_years = db.Column(db.String(255))
+    # Optional application deadline; students cannot apply after this
+    application_deadline = db.Column(db.DateTime)
     approval_status = db.Column(db.String(20), default="pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -84,3 +91,16 @@ class Application(db.Model):
     __table_args__ = (
         db.UniqueConstraint("student_id", "job_id", name="unique_student_job_application"),
     )
+
+
+class Interview(db.Model):
+    """Interview scheduled for an application."""
+    __tablename__ = "interviews"
+
+    id = db.Column(db.Integer, primary_key=True)
+    application_id = db.Column(db.Integer, db.ForeignKey("applications.id"), nullable=False)
+    scheduled_at = db.Column(db.DateTime)
+    location = db.Column(db.String(255))
+    status = db.Column(db.String(30), default="scheduled")
+
+    application = db.relationship("Application", backref="interviews", lazy=True)

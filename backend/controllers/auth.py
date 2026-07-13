@@ -46,6 +46,8 @@ def register():
             user_id=user.id,
             name=data["name"],
             cgpa=data.get("cgpa"),  # CGPA is optional during registration
+            branch=data.get("branch"),
+            year=data.get("year"),
         )
     else:  # company
         if not data.get("company_name"):

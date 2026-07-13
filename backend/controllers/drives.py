@@ -4,9 +4,10 @@ creates/manages them, admin approves them, admin views overall stats.
 """
 
 from flask import Blueprint, jsonify, request
+from datetime import datetime
 from flask_jwt_extended import get_jwt_identity
 from controllers.database import db
-from controllers.models import CompanyProfile, StudentProfile, Job, Application
+from controllers.models import CompanyProfile, StudentProfile, Job, Application, Interview
 from utils.decorators import role_required
 from services.cache import cache
 
@@ -31,12 +32,26 @@ def create_drive():
     if not data.get("title"):
         return jsonify({"error": "title is required"}), 400
 
+    # parse optional eligibility fields
+    eligible_branches = data.get("eligible_branches")  # expected comma-separated string
+    eligible_years = data.get("eligible_years")
+    deadline_raw = data.get("application_deadline")
+    deadline = None
+    if deadline_raw:
+        try:
+            deadline = datetime.fromisoformat(deadline_raw)
+        except Exception:
+            return jsonify({"error": "application_deadline must be ISO datetime string"}), 400
+
     job = Job(
         company_id=company.id,
         title=data["title"],
         description=data.get("description", ""),
         package=data.get("package"),
         min_cgpa=data.get("min_cgpa", 0.0),
+        eligible_branches=eligible_branches,
+        eligible_years=eligible_years,
+        application_deadline=deadline,
         approval_status="pending",
     )
     db.session.add(job)
@@ -88,6 +103,44 @@ def update_application_status(application_id):
     return jsonify({"message": f"Application status updated to {new_status}"})
 
 
+@drives_bp.route("/applications/<int:application_id>/interview", methods=["POST"])
+@role_required("company")
+def schedule_interview(application_id):
+    company = _get_company_profile()
+    application = Application.query.get_or_404(application_id)
+    if application.job.company_id != company.id:
+        return jsonify({"error": "This application is not for your company"}), 403
+
+    data = request.get_json()
+    scheduled_raw = data.get("scheduled_at")
+    location = data.get("location")
+    if not scheduled_raw:
+        return jsonify({"error": "scheduled_at is required (ISO datetime)"}), 400
+    try:
+        scheduled_at = datetime.fromisoformat(scheduled_raw)
+    except Exception:
+        return jsonify({"error": "scheduled_at must be ISO datetime string"}), 400
+
+    interview = Interview(application_id=application.id, scheduled_at=scheduled_at, location=location)
+    db.session.add(interview)
+    db.session.commit()
+    return jsonify({"message": "Interview scheduled", "interview_id": interview.id}), 201
+
+
+@drives_bp.route("/applications/<int:application_id>/interview", methods=["GET"])
+@role_required("company")
+def get_application_interviews(application_id):
+    company = _get_company_profile()
+    application = Application.query.get_or_404(application_id)
+    if application.job.company_id != company.id:
+        return jsonify({"error": "This application is not for your company"}), 403
+
+    return jsonify([
+        {"id": i.id, "scheduled_at": i.scheduled_at.isoformat() if i.scheduled_at else None, "location": i.location, "status": i.status}
+        for i in application.interviews
+    ])
+
+
 # ─────────────────────────── Admin: approve drives + stats ───────────────────────────
 
 @drives_bp.route("/active", methods=["GET"])
@@ -101,6 +154,9 @@ def list_active_drives():
             "company": j.company.company_name,
             "package": j.package,
             "min_cgpa": j.min_cgpa,
+            "eligible_branches": j.eligible_branches,
+            "eligible_years": j.eligible_years,
+            "application_deadline": j.application_deadline.isoformat() if j.application_deadline else None,
             "created_at": j.created_at.strftime("%Y-%m-%d"),
         }
         for j in jobs
@@ -118,6 +174,9 @@ def list_past_drives():
             "company": j.company.company_name,
             "package": j.package,
             "min_cgpa": j.min_cgpa,
+            "eligible_branches": j.eligible_branches,
+            "eligible_years": j.eligible_years,
+            "application_deadline": j.application_deadline.isoformat() if j.application_deadline else None,
             "created_at": j.created_at.strftime("%Y-%m-%d"),
         }
         for j in jobs

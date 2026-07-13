@@ -26,6 +26,14 @@
         <input v-model="name" type="text" class="form-control" required />
       </div>
       <div v-if="role === 'student'" class="mb-3">
+        <label class="form-label">Branch</label>
+        <input v-model="branch" type="text" class="form-control" placeholder="e.g., Computer Science" />
+      </div>
+      <div v-if="role === 'student'" class="mb-3">
+        <label class="form-label">Year</label>
+        <input v-model.number="year" type="number" min="1" max="8" class="form-control" placeholder="e.g., 4" />
+      </div>
+      <div v-if="role === 'student'" class="mb-3">
         <label class="form-label">CGPA</label>
         <input v-model.number="cgpa" type="number" step="0.01" min="0" max="10" class="form-control" placeholder="e.g., 8.5" />
       </div>
@@ -72,6 +80,8 @@ export default {
       password: '',
       name: '',
       cgpa: null,
+        branch: '',
+        year: null,
       companyName: '',
       hrContact: '',
       website: '',
@@ -92,6 +102,8 @@ export default {
       if (this.role === 'student') {
         body.name = this.name
         if (this.cgpa) body.cgpa = this.cgpa
+        if (this.branch) body.branch = this.branch
+        if (this.year) body.year = this.year
       } else {
         body.company_name = this.companyName
         body.hr_contact = this.hrContact
