@@ -9,6 +9,7 @@ import smtplib
 from email.message import EmailMessage
 from datetime import datetime
 import json
+from weasyprint import HTML
 
 from flask import Flask
 from services.celery_app import celery
@@ -61,26 +62,41 @@ def send_monthly_report():
         selected_count = Application.query.filter_by(status="selected").count()
 
         html_report = f"""
-        <h2>Monthly Placement Activity Report</h2>
-        <p>Generated on: {datetime.utcnow().strftime('%Y-%m-%d')}</p>
-        <ul>
-            <li>Drives conducted: {drives_count}</li>
-            <li>Students applied: {applied_count}</li>
-            <li>Students selected: {selected_count}</li>
-        </ul>
+        <html>
+          <body style="font-family: Arial, sans-serif; padding: 24px;">
+            <h2>Monthly Placement Activity Report</h2>
+            <p><strong>Generated on:</strong> {datetime.utcnow().strftime('%Y-%m-%d')}</p>
+            <ul>
+              <li>Drives conducted: {drives_count}</li>
+              <li>Students applied: {applied_count}</li>
+              <li>Students selected: {selected_count}</li>
+            </ul>
+            <p>This report was generated automatically by the Placement Portal.</p>
+          </body>
+        </html>
         """
+        pdf_buffer = io.BytesIO()
+        HTML(string=html_report).write_pdf(pdf_buffer)
+        pdf_bytes = pdf_buffer.getvalue()
 
-        # Send to configured admin email (MAIL_USERNAME) if present
-        admin_email = Config.MAIL_USERNAME or None
+        reports_dir = os.path.join(INSTANCE_DIR, 'reports')
+        os.makedirs(reports_dir, exist_ok=True)
+        pdf_path = os.path.join(reports_dir, f"monthly_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf")
+        with open(pdf_path, 'wb') as out_file:
+            out_file.write(pdf_bytes)
+
+        # Send to configured admin email (ADMIN_EMAIL or MAIL_USERNAME) if present
+        admin_email = getattr(Config, 'ADMIN_EMAIL', None) or Config.MAIL_USERNAME or None
         if admin_email:
             _send_email(to_addr=admin_email, subject="Monthly Placement Report", body=html_report, html=True)
+            _send_email(to_addr=admin_email, subject="Monthly Placement Report PDF", body=f"PDF report attached: {pdf_path}", attachment_bytes=pdf_bytes, attachment_name="monthly_report.pdf")
 
         # Also POST to webhook if configured
         if getattr(Config, 'NOTIFICATION_WEBHOOK_URL', None):
-            _post_webhook(Config.NOTIFICATION_WEBHOOK_URL, {"type": "monthly_report", "html": html_report})
+            _post_webhook(Config.NOTIFICATION_WEBHOOK_URL, {"type": "monthly_report", "html": html_report, "pdf_path": pdf_path})
 
         print("[MONTHLY REPORT] Generated and delivered (attempted)")
-        return "Monthly report generated and delivered"
+        return pdf_path
 
 
 @celery.task(name="services.tasks.export_applications_csv")
@@ -94,10 +110,16 @@ def export_applications_csv(student_id):
 
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["Company Name", "Drive Title", "Application Status", "Applied Date"])
+        writer.writerow(["Student ID", "Company Name", "Drive Title", "Application Status", "Applied Date", "Updated Date"])
         for a in student.applications:
-            writer.writerow([a.job.company.company_name, a.job.title, a.status,
-                              a.application_date.strftime("%Y-%m-%d")])
+            writer.writerow([
+                student.id,
+                a.job.company.company_name if a.job and a.job.company else "",
+                a.job.title if a.job else "",
+                a.status,
+                a.application_date.strftime("%Y-%m-%d") if a.application_date else "",
+                a.updated_at.strftime("%Y-%m-%d") if getattr(a, 'updated_at', None) else "",
+            ])
 
         # Ensure exports directory exists
         exports_dir = Config.EXPORTS_DIR if hasattr(Config, 'EXPORTS_DIR') else os.path.join(INSTANCE_DIR, 'exports')
@@ -122,7 +144,7 @@ def export_applications_csv(student_id):
         return full_path
 
 
-def _send_email(to_addr, subject, body, html=False):
+def _send_email(to_addr, subject, body, html=False, attachment_bytes=None, attachment_name=None):
     if not to_addr:
         return False
     if not getattr(Config, 'MAIL_USERNAME', None) or not getattr(Config, 'MAIL_PASSWORD', None):
@@ -140,6 +162,9 @@ def _send_email(to_addr, subject, body, html=False):
             msg.add_alternative(body, subtype='html')
         else:
             msg.set_content(body)
+
+        if attachment_bytes and attachment_name:
+            msg.add_attachment(attachment_bytes, maintype='application', subtype='pdf', filename=attachment_name)
 
         with smtplib.SMTP(Config.MAIL_SERVER, Config.MAIL_PORT) as server:
             if Config.MAIL_USE_TLS:

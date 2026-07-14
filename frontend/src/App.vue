@@ -101,4 +101,15 @@ export default {
 .page-content {
   padding: 1.5rem 2rem 2.5rem;
 }
+@media (max-width: 768px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1rem 1.1rem;
+  }
+  .page-content {
+    padding: 1rem 1rem 1.5rem;
+  }
+}
 </style>

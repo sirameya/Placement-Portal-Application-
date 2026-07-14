@@ -5,9 +5,11 @@ data, plus admin's approve/reject/search actions on companies.
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity
+from sqlalchemy import or_
 from controllers.database import db
 from controllers.models import CompanyProfile
 from utils.decorators import role_required
+from services.cache import cache
 
 companies_bp = Blueprint("companies", __name__, url_prefix="/api/companies")
 
@@ -43,6 +45,7 @@ def my_profile():
 
 @companies_bp.route("/all", methods=["GET"])
 @role_required("admin")
+@cache.cached(timeout=60)
 def list_companies():
     companies = CompanyProfile.query.order_by(CompanyProfile.company_name).all()
     return jsonify([
@@ -66,6 +69,7 @@ def list_companies():
 
 @companies_bp.route("/pending", methods=["GET"])
 @role_required("admin")
+@cache.cached(timeout=60)
 def list_pending():
     companies = CompanyProfile.query.filter_by(approval_status="pending").all()
     return jsonify([
@@ -94,10 +98,30 @@ def reject(company_id):
 
 @companies_bp.route("/search", methods=["GET"])
 @role_required("admin")
+@cache.cached(timeout=60, query_string=True)
 def search_companies():
     q = request.args.get("q", "")
-    matches = CompanyProfile.query.filter(CompanyProfile.company_name.ilike(f"%{q}%")).all()
-    return jsonify([{"id": c.id, "company_name": c.company_name} for c in matches])
+    query = CompanyProfile.query
+    if q:
+        query = query.filter(
+            or_(
+                CompanyProfile.company_name.ilike(f"%{q}%"),
+                CompanyProfile.industry.ilike(f"%{q}%"),
+                CompanyProfile.hr_contact.ilike(f"%{q}%"),
+            )
+        )
+    matches = query.order_by(CompanyProfile.company_name).all()
+    return jsonify([
+        {
+            "id": c.id,
+            "company_name": c.company_name,
+            "hr_contact": c.hr_contact,
+            "industry": c.industry,
+            "approval_status": c.approval_status,
+            "is_active": c.user.is_active if c.user else True,
+        }
+        for c in matches
+    ])
 
 
 @companies_bp.route("/<int:company_id>/toggle-active", methods=["POST"])

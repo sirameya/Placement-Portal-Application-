@@ -5,7 +5,8 @@ creates/manages them, admin approves them, admin views overall stats.
 
 from flask import Blueprint, jsonify, request
 from datetime import datetime
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, get_jwt
+from sqlalchemy import or_
 from controllers.database import db
 from controllers.models import CompanyProfile, StudentProfile, Job, Application, Interview
 from utils.decorators import role_required
@@ -50,6 +51,10 @@ def create_drive():
             drive_date = datetime.fromisoformat(drive_date_raw)
         except Exception:
             return jsonify({"error": "drive_date must be ISO datetime string"}), 400
+
+    # Validate that drive_date is strictly after application_deadline
+    if deadline and drive_date and deadline >= drive_date:
+        return jsonify({"error": "Drive date must be strictly after the application deadline"}), 400
 
     job = Job(
         company_id=company.id,
@@ -167,6 +172,7 @@ def get_application_interviews(application_id):
 
 @drives_bp.route("/active", methods=["GET"])
 @role_required("admin")
+@cache.cached(timeout=60)
 def list_active_drives():
     jobs = Job.query.filter_by(approval_status="approved").all()
     return jsonify([
@@ -174,7 +180,8 @@ def list_active_drives():
             "id": j.id,
             "title": j.title,
             "company": j.company.company_name,
-            "package": j.package,
+            "package": j.salary_package,
+            "location": j.location,
             "min_cgpa": j.min_cgpa,
             "eligible_branches": j.eligible_branches,
             "eligible_years": j.eligible_years,
@@ -187,6 +194,7 @@ def list_active_drives():
 
 @drives_bp.route("/past", methods=["GET"])
 @role_required("admin")
+@cache.cached(timeout=60)
 def list_past_drives():
     jobs = Job.query.filter_by(approval_status="rejected").all()
     return jsonify([
@@ -194,7 +202,8 @@ def list_past_drives():
             "id": j.id,
             "title": j.title,
             "company": j.company.company_name,
-            "package": j.package,
+            "package": j.salary_package,
+            "location": j.location,
             "min_cgpa": j.min_cgpa,
             "eligible_branches": j.eligible_branches,
             "eligible_years": j.eligible_years,
@@ -207,10 +216,11 @@ def list_past_drives():
 
 @drives_bp.route("/pending", methods=["GET"])
 @role_required("admin")
+@cache.cached(timeout=60)
 def list_pending_drives():
     jobs = Job.query.filter_by(approval_status="pending").all()
     return jsonify([
-        {"id": j.id, "title": j.title, "company": j.company.company_name, "package": j.package, "location": j.location, "job_type": j.job_type, "employment_type": j.employment_type, "salary_package": j.salary_package, "application_deadline": j.application_deadline.isoformat() if j.application_deadline else None}
+        {"id": j.id, "title": j.title, "company": j.company.company_name, "package": j.salary_package, "location": j.location, "job_type": j.job_type, "employment_type": j.employment_type, "application_deadline": j.application_deadline.isoformat() if j.application_deadline else None}
         for j in jobs
     ])
 
@@ -243,6 +253,41 @@ def close_drive(job_id):
     job.approval_status = "closed"
     db.session.commit()
     return jsonify({"message": f"Drive '{job.title}' closed"})
+
+
+@drives_bp.route("/search", methods=["GET"])
+@role_required("admin", "student", "company")
+def search_drives():
+    q = request.args.get("q", "").strip()
+    query = Job.query
+    role = get_jwt().get("role")
+    if role != "admin":
+        query = query.filter_by(approval_status="approved")
+    if q:
+        query = query.filter(
+            or_(
+                Job.title.ilike(f"%{q}%"),
+                Job.location.ilike(f"%{q}%"),
+                Job.skills_required.ilike(f"%{q}%"),
+                Job.description.ilike(f"%{q}%"),
+                Job.company.has(CompanyProfile.company_name.ilike(f"%{q}%")),
+            )
+        )
+    jobs = query.order_by(Job.created_at.desc()).all()
+    return jsonify([
+        {
+            "id": j.id,
+            "title": j.title,
+            "company": j.company.company_name,
+            "package": j.salary_package,
+            "location": j.location,
+            "min_cgpa": j.min_cgpa,
+            "status": j.approval_status,
+            "application_deadline": j.application_deadline.isoformat() if j.application_deadline else None,
+            "created_at": j.created_at.strftime("%Y-%m-%d"),
+        }
+        for j in jobs
+    ])
 
 
 @drives_bp.route("/stats", methods=["GET"])

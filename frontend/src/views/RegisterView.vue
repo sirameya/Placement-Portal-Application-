@@ -2,7 +2,7 @@
   <div class="container mt-5" style="max-width: 450px;">
     <h3 class="mb-4">Register</h3>
 
-    <form @submit.prevent="handleRegister">
+    <form ref="registerForm" @submit.prevent="handleRegister">
       <div class="mb-3">
         <label class="form-label">I am a...</label>
         <select v-model="role" class="form-select">
@@ -13,21 +13,30 @@
 
       <div class="mb-3">
         <label class="form-label">Email</label>
-        <input v-model="email" type="email" class="form-control" required />
+        <input v-model="email" type="email" class="form-control" required autocomplete="email" />
       </div>
       <div class="mb-3">
         <label class="form-label">Password</label>
-        <input v-model="password" type="password" class="form-control" required />
+        <input v-model="password" type="password" class="form-control" required minlength="6" />
       </div>
 
       <!-- Only shown when registering as a student -->
       <div v-if="role === 'student'" class="mb-3">
         <label class="form-label">Full Name</label>
-        <input v-model="name" type="text" class="form-control" required />
+        <input v-model="name" type="text" class="form-control" required minlength="2" />
       </div>
       <div v-if="role === 'student'" class="mb-3">
         <label class="form-label">Branch</label>
-        <input v-model="branch" type="text" class="form-control" placeholder="e.g., Computer Science" />
+        <select v-model="branch" class="form-select" required>
+          <option value="">-- Select Branch --</option>
+          <option value="CSE">Computer Science Engineering (CSE)</option>
+          <option value="ECE">Electronics & Communication (ECE)</option>
+          <option value="EEE">Electrical Engineering (EEE)</option>
+          <option value="ME">Mechanical Engineering (ME)</option>
+          <option value="CE">Civil Engineering (CE)</option>
+          <option value="IT">Information Technology (IT)</option>
+          <option value="BME">Biomedical Engineering (BME)</option>
+        </select>
       </div>
       <div v-if="role === 'student'" class="mb-3">
         <label class="form-label">Year</label>
@@ -50,8 +59,82 @@
         <input v-model="portfolioUrl" type="url" class="form-control" placeholder="https://..." />
       </div>
       <div v-if="role === 'student'" class="mb-3">
-        <label class="form-label">LinkedIn URL</label>
-        <input v-model="linkedinUrl" type="url" class="form-control" placeholder="https://linkedin.com/in/..." />
+        <label class="form-label">Skill 1</label>
+        <select v-model="skill1" class="form-select" required>
+          <option value="">-- Select Skill --</option>
+          <option value="Python">Python</option>
+          <option value="Java">Java</option>
+          <option value="JavaScript">JavaScript</option>
+          <option value="C++">C++</option>
+          <option value="C#">C#</option>
+          <option value="React">React</option>
+          <option value="Angular">Angular</option>
+          <option value="Vue.js">Vue.js</option>
+          <option value="Node.js">Node.js</option>
+          <option value="Django">Django</option>
+          <option value="Spring Boot">Spring Boot</option>
+          <option value="SQL">SQL</option>
+          <option value="MongoDB">MongoDB</option>
+          <option value="AWS">AWS</option>
+          <option value="Docker">Docker</option>
+          <option value="Kubernetes">Kubernetes</option>
+          <option value="Git">Git</option>
+          <option value="REST APIs">REST APIs</option>
+          <option value="GraphQL">GraphQL</option>
+          <option value="Machine Learning">Machine Learning</option>
+        </select>
+      </div>
+      <div v-if="role === 'student'" class="mb-3">
+        <label class="form-label">Skill 2</label>
+        <select v-model="skill2" class="form-select" required>
+          <option value="">-- Select Skill --</option>
+          <option value="Python">Python</option>
+          <option value="Java">Java</option>
+          <option value="JavaScript">JavaScript</option>
+          <option value="C++">C++</option>
+          <option value="C#">C#</option>
+          <option value="React">React</option>
+          <option value="Angular">Angular</option>
+          <option value="Vue.js">Vue.js</option>
+          <option value="Node.js">Node.js</option>
+          <option value="Django">Django</option>
+          <option value="Spring Boot">Spring Boot</option>
+          <option value="SQL">SQL</option>
+          <option value="MongoDB">MongoDB</option>
+          <option value="AWS">AWS</option>
+          <option value="Docker">Docker</option>
+          <option value="Kubernetes">Kubernetes</option>
+          <option value="Git">Git</option>
+          <option value="REST APIs">REST APIs</option>
+          <option value="GraphQL">GraphQL</option>
+          <option value="Machine Learning">Machine Learning</option>
+        </select>
+      </div>
+      <div v-if="role === 'student'" class="mb-3">
+        <label class="form-label">Skill 3</label>
+        <select v-model="skill3" class="form-select" required>
+          <option value="">-- Select Skill --</option>
+          <option value="Python">Python</option>
+          <option value="Java">Java</option>
+          <option value="JavaScript">JavaScript</option>
+          <option value="C++">C++</option>
+          <option value="C#">C#</option>
+          <option value="React">React</option>
+          <option value="Angular">Angular</option>
+          <option value="Vue.js">Vue.js</option>
+          <option value="Node.js">Node.js</option>
+          <option value="Django">Django</option>
+          <option value="Spring Boot">Spring Boot</option>
+          <option value="SQL">SQL</option>
+          <option value="MongoDB">MongoDB</option>
+          <option value="AWS">AWS</option>
+          <option value="Docker">Docker</option>
+          <option value="Kubernetes">Kubernetes</option>
+          <option value="Git">Git</option>
+          <option value="REST APIs">REST APIs</option>
+          <option value="GraphQL">GraphQL</option>
+          <option value="Machine Learning">Machine Learning</option>
+        </select>
       </div>
 
       <!-- Only shown when registering as a company -->
@@ -125,7 +208,9 @@ export default {
       phone: '',
       address: '',
       portfolioUrl: '',
-      linkedinUrl: '',
+      skill1: '',
+      skill2: '',
+      skill3: '',
       companyName: '',
       hrContact: '',
       website: '',
@@ -140,7 +225,18 @@ export default {
     }
   },
   methods: {
+    validateForm() {
+      const form = this.$refs.registerForm
+      if (form && !form.checkValidity()) {
+        form.reportValidity()
+        return false
+      }
+      return true
+    },
     async handleRegister() {
+      if (!this.validateForm()) {
+        return
+      }
       this.errorMessage = ''
       this.successMessage = ''
       this.loading = true
@@ -156,7 +252,11 @@ export default {
         if (this.phone) body.phone = this.phone
         if (this.address) body.address = this.address
         if (this.portfolioUrl) body.portfolio_url = this.portfolioUrl
-        if (this.linkedinUrl) body.linkedin_url = this.linkedinUrl
+        // Combine 3 selected skills into comma-separated string
+        if (this.skill1 || this.skill2 || this.skill3) {
+          const skills = [this.skill1, this.skill2, this.skill3].filter(s => s).join(', ')
+          body.skills = skills
+        }
       } else {
         body.company_name = this.companyName
         body.hr_contact = this.hrContact

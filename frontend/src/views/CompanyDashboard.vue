@@ -1,8 +1,35 @@
 <template>
   <div class="container mt-4">
-    <h3>Company Dashboard</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h3 class="mb-1">Company Dashboard</h3>
+        <p v-if="companyName" class="text-muted mb-0">Welcome, <strong>{{ companyName }}</strong>! Manage your placement drives and review applicants.</p>
+      </div>
+    </div>
     <div v-if="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
     <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
+
+    <div class="card mb-4 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Company Details</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <p class="mb-2"><strong>Company Name:</strong> {{ companyDetails.company_name || 'N/A' }}</p>
+            <p class="mb-2"><strong>HR Contact:</strong> {{ companyDetails.hr_contact || 'N/A' }}</p>
+            <p class="mb-2"><strong>Website:</strong> {{ companyDetails.website || 'N/A' }}</p>
+            <p class="mb-2"><strong>Industry:</strong> {{ companyDetails.industry || 'N/A' }}</p>
+            <p class="mb-2"><strong>Address:</strong> {{ companyDetails.address || 'N/A' }}</p>
+          </div>
+          <div class="col-md-6">
+            <p class="mb-2"><strong>Contact Email:</strong> {{ companyDetails.contact_email || 'N/A' }}</p>
+            <p class="mb-2"><strong>Phone Number:</strong> {{ companyDetails.phone_number || 'N/A' }}</p>
+            <p class="mb-2"><strong>Employee Count:</strong> {{ companyDetails.employee_count || 'N/A' }}</p>
+            <p class="mb-2"><strong>Approval Status:</strong> <span class="badge" :class="statusClass(companyDetails.approval_status)">{{ companyDetails.approval_status || 'N/A' }}</span></p>
+            <p class="mb-2"><strong>Description:</strong> {{ companyDetails.description || 'N/A' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Create a new drive -->
     <div class="card mb-4">
@@ -23,7 +50,7 @@
           <div class="row g-2 mb-2">
             <div class="col-12">
               <label class="form-label">Job Title</label>
-              <input v-model="newDrive.title" class="form-control form-control-lg" placeholder="Job title (e.g., Software Engineer - Intern)" required aria-label="Job Title" />
+              <input v-model="newDrive.title" class="form-control form-control-lg" placeholder="Job title (e.g., Software Engineer - Intern)" required aria-label="Job Title" minlength="3" />
             </div>
             <div class="col-md-4">
               <label class="form-label">Package</label>
@@ -31,7 +58,7 @@
             </div>
             <div class="col-md-4">
               <label class="form-label">Location</label>
-              <input v-model="newDrive.location" class="form-control" placeholder="Location (City or Remote)" aria-label="Location" />
+              <input v-model="newDrive.location" class="form-control" placeholder="Location (City or Remote)" aria-label="Location" required />
             </div>
             <div class="col-md-4">
               <label class="form-label">Min CGPA</label>
@@ -89,20 +116,36 @@
     </div>
 
     <!-- List of this company's own drives -->
-    <h5>My Drives</h5>
-    <table class="table">
-      <thead><tr><th>Title</th><th>Status</th><th>Applicants</th><th></th></tr></thead>
-      <tbody>
-        <tr v-for="drive in myDrives" :key="drive.id">
-          <td>{{ drive.title }}</td>
-          <td><span class="badge" :class="drive.status === 'approved' ? 'bg-success' : 'bg-secondary'">{{ drive.status }}</span></td>
-          <td>{{ drive.applicant_count }}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-primary" @click="loadApplicants(drive.id)">View Applicants</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Created Placement Drives</h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Applicants</th>
+                <th>Location</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="drive in myDrives" :key="drive.id">
+                <td>{{ drive.title }}</td>
+                <td><span class="badge" :class="drive.status === 'approved' ? 'bg-success' : 'bg-secondary'">{{ drive.status }}</span></td>
+                <td>{{ drive.applicant_count }}</td>
+                <td>{{ drive.location || 'N/A' }}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary" @click="loadApplicants(drive.id)">View Applicants</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-if="myDrives.length === 0" class="text-muted mt-3 mb-0">No placement drives created yet.</p>
+      </div>
+    </div>
 
     <!-- Applicants for whichever drive was clicked above -->
     <div v-if="selectedDriveId">
@@ -163,6 +206,8 @@ export default {
   },
   data() {
     return {
+      companyName: '',
+      companyDetails: {},
       myDrives: [],
       applicants: [],
       selectedDriveId: null,
@@ -189,9 +234,19 @@ export default {
     }
   },
   async mounted() {
+    await this.loadCompanyProfile()
     await this.loadMyDrives()
   },
   methods: {
+    async loadCompanyProfile() {
+      try {
+        const profile = await apiRequest('/companies/me', { token: this.auth.token })
+        this.companyName = profile.company_name
+        this.companyDetails = profile
+      } catch (err) {
+        this.errorMessage = err.message
+      }
+    },
     async loadMyDrives() {
       try {
         this.myDrives = await apiRequest('/drives/mine', { token: this.auth.token })
@@ -202,7 +257,7 @@ export default {
     async handleCreateDrive() {
       this.errorMessage = ''
       this.successMessage = ''
-      // Client-side validation: ensure application_deadline is before or equal to drive_date
+      // Client-side validation: ensure application_deadline is strictly before drive_date
       if (this.newDrive.application_deadline && this.newDrive.drive_date) {
         const appDead = new Date(this.newDrive.application_deadline)
         const drv = new Date(this.newDrive.drive_date)
@@ -210,8 +265,8 @@ export default {
           this.errorMessage = 'Invalid date format'
           return
         }
-        if (appDead > drv) {
-          this.errorMessage = 'Application deadline must be before or equal to the drive date'
+        if (appDead >= drv) {
+          this.errorMessage = 'Drive date must be after the application deadline'
           return
         }
       }
@@ -243,6 +298,14 @@ export default {
       } catch (err) {
         this.errorMessage = err.message
       }
+    },
+    statusClass(status) {
+      const map = {
+        approved: 'bg-success',
+        pending: 'bg-warning text-dark',
+        rejected: 'bg-danger',
+      }
+      return map[status] || 'bg-secondary'
     },
     async loadApplicants(driveId) {
       this.selectedDriveId = driveId

@@ -20,6 +20,8 @@ from services.celery_app import celery
 import os
 from werkzeug.utils import secure_filename
 from utils.decorators import role_required
+from services.cache import cache
+from sqlalchemy import or_
 from datetime import datetime
 
 students_bp = Blueprint("students", __name__, url_prefix="/api/students")
@@ -37,6 +39,7 @@ def _get_student_profile():
 
 @students_bp.route("/drives", methods=["GET"])
 @role_required("student")
+@cache.cached(timeout=60, query_string=True)
 def browse_drives():
     """Students can filter by active or past drives.
     active = approved drives
@@ -50,7 +53,7 @@ def browse_drives():
 
     return jsonify([
         {"id": j.id, "title": j.title, "company": j.company.company_name,
-         "package": j.package, "salary_package": j.salary_package, "location": j.location,
+         "package": j.salary_package, "location": j.location,
          "job_type": j.job_type, "employment_type": j.employment_type, "skills_required": j.skills_required,
          "placement_mode": j.placement_mode, "min_cgpa": j.min_cgpa, "status": j.approval_status,
          "application_deadline": j.application_deadline.isoformat() if j.application_deadline else None,
@@ -101,12 +104,13 @@ def apply_to_drive(job_id):
 def my_applications():
     """Full placement history for the logged-in student."""
     student = _get_student_profile()
+    applications = Application.query.filter_by(student_id=student.id).order_by(Application.application_date.desc()).all()
     return jsonify([
         {"application_id": a.id, "drive_title": a.job.title,
          "company": a.job.company.company_name, "status": a.status,
          "applied_on": a.application_date.strftime("%Y-%m-%d"),
          "resume_path": a.resume_path, "cover_letter": a.cover_letter, "notes": a.notes}
-        for a in student.applications
+        for a in applications
     ])
 
 
@@ -137,7 +141,13 @@ def get_profile():
         "id": student.id,
         "name": student.name,
         "cgpa": student.cgpa,
+        "branch": student.branch,
+        "year": student.year,
         "skills": student.skills,
+        "phone": student.phone,
+        "address": student.address,
+        "portfolio_url": student.portfolio_url,
+        "linkedin_url": student.linkedin_url,
         "resume_path": student.resume_path
     })
 
@@ -146,8 +156,8 @@ def get_profile():
 @role_required("student")
 def update_profile():
     student = _get_student_profile()
-    data = request.get_json()
-    for field in ("name", "cgpa", "branch", "year", "skills", "resume_path"):
+    data = request.get_json() or {}
+    for field in ("name", "cgpa", "branch", "year", "skills", "resume_path", "phone", "address", "portfolio_url", "linkedin_url"):
         if field in data:
             setattr(student, field, data[field])
     db.session.commit()
@@ -206,11 +216,43 @@ def download_export(filename):
 
 @students_bp.route("/search", methods=["GET"])
 @role_required("admin")
+@cache.cached(timeout=60, query_string=True)
 def search_students():
     """GET /api/students/search?q=someterm"""
     q = request.args.get("q", "")
-    matches = StudentProfile.query.filter(StudentProfile.name.ilike(f"%{q}%")).all()
-    return jsonify([{"id": s.id, "name": s.name, "cgpa": s.cgpa} for s in matches])
+    query = StudentProfile.query
+    if q:
+        query = query.filter(StudentProfile.name.ilike(f"%{q}%"))
+    matches = query.order_by(StudentProfile.name).all()
+    return jsonify([
+        {
+            "id": s.id,
+            "name": s.name,
+            "branch": s.branch,
+            "year": s.year,
+            "cgpa": s.cgpa,
+            "skills": s.skills,
+            "is_active": s.user.is_active if s.user else True,
+        }
+        for s in matches
+    ])
+
+
+@students_bp.route("/applications/all", methods=["GET"])
+@role_required("admin")
+def admin_all_applications():
+    applications = Application.query.order_by(Application.application_date.desc()).all()
+    return jsonify([
+        {
+            "id": a.id,
+            "student_name": a.student.name if a.student else None,
+            "drive_title": a.job.title if a.job else None,
+            "company": a.job.company.company_name if a.job and a.job.company else None,
+            "status": a.status,
+            "applied_on": a.application_date.strftime("%Y-%m-%d") if a.application_date else None,
+        }
+        for a in applications
+    ])
 
 
 @students_bp.route("/<int:student_id>/blacklist", methods=["POST"])

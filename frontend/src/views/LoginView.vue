@@ -16,14 +16,14 @@
         <h3>Welcome back</h3>
         <p class="form-subtext">Sign in to continue your hiring journey.</p>
 
-        <form @submit.prevent="handleLogin">
+        <form ref="loginForm" @submit.prevent="handleLogin">
           <div class="mb-3">
             <label class="form-label">Email</label>
-            <input v-model="email" type="email" class="form-control" required />
+            <input v-model="email" type="email" class="form-control" required autocomplete="email" />
           </div>
           <div class="mb-3">
             <label class="form-label">Password</label>
-            <input v-model="password" type="password" class="form-control" required />
+            <input v-model="password" type="password" class="form-control" required minlength="6" />
           </div>
 
           <div v-if="errorMessage" class="alert alert-danger py-2">{{ errorMessage }}</div>
@@ -60,7 +60,18 @@ export default {
     }
   },
   methods: {
+    validateForm() {
+      const form = this.$refs.loginForm
+      if (form && !form.checkValidity()) {
+        form.reportValidity()
+        return false
+      }
+      return true
+    },
     async handleLogin() {
+      if (!this.validateForm()) {
+        return
+      }
       this.errorMessage = ''
       this.loading = true
       try {
