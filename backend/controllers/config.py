@@ -33,3 +33,13 @@ class Config:
     MAIL_USE_TLS = True
     MAIL_USERNAME = os.environ.get("MAIL_USERNAME", "")
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
+
+    # Public base URL used in notifications (change in production)
+    APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
+
+    # Optional webhook to POST notifications to (JSON payload)
+    NOTIFICATION_WEBHOOK_URL = os.environ.get("NOTIFICATION_WEBHOOK_URL", "")
+
+    # Local storage paths (inside instance/)
+    EXPORTS_DIR = os.path.join(INSTANCE_DIR, "exports")
+    UPLOADS_DIR = os.path.join(INSTANCE_DIR, "uploads")

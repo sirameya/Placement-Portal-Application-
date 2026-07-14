@@ -9,11 +9,16 @@ why admin's "search/blacklist student" also lives here rather than in
 a separate admin file.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app, send_from_directory
 from flask_jwt_extended import get_jwt_identity
 from controllers.database import db
 from controllers.models import StudentProfile, Job, Application
 from controllers.models import Interview
+from controllers.config import Config, INSTANCE_DIR
+from services.tasks import export_applications_csv
+from services.celery_app import celery
+import os
+from werkzeug.utils import secure_filename
 from utils.decorators import role_required
 from datetime import datetime
 
@@ -147,6 +152,54 @@ def update_profile():
             setattr(student, field, data[field])
     db.session.commit()
     return jsonify({"message": "Profile updated"})
+
+
+@students_bp.route("/profile/upload_resume", methods=["POST"])
+@role_required("student")
+def upload_resume():
+    """Accepts multipart/form-data file under 'resume' key and stores it in instance/uploads."""
+    student = _get_student_profile()
+    if 'resume' not in request.files:
+        return jsonify({"error": "No resume file provided"}), 400
+    f = request.files['resume']
+    if f.filename == '':
+        return jsonify({"error": "Empty filename"}), 400
+
+    filename = secure_filename(f.filename)
+    uploads_dir = Config.UPLOADS_DIR if hasattr(Config, 'UPLOADS_DIR') else os.path.join(INSTANCE_DIR, 'uploads')
+    os.makedirs(uploads_dir, exist_ok=True)
+    out_name = f"student_{student.id}_resume_{int(datetime.utcnow().timestamp())}_{filename}"
+    full_path = os.path.join(uploads_dir, out_name)
+    f.save(full_path)
+    # Persist path relative to instance for portability
+    student.resume_path = f"uploads/{out_name}"
+    db.session.commit()
+    return jsonify({"message": "Resume uploaded", "resume_path": student.resume_path})
+
+
+@students_bp.route("/applications/export", methods=["POST"])
+@role_required("student")
+def trigger_export():
+    """Starts async export job and returns Celery task id."""
+    student = _get_student_profile()
+    task = export_applications_csv.delay(student.id)
+    return jsonify({"message": "Export started", "task_id": task.id}), 202
+
+
+@students_bp.route('/exports/status/<task_id>', methods=['GET'])
+@role_required('student')
+def export_status(task_id):
+    res = celery.AsyncResult(task_id)
+    data = {"state": res.state}
+    if res.ready():
+        data.update({"result": res.result})
+    return jsonify(data)
+
+
+@students_bp.route('/exports/<path:filename>', methods=['GET'])
+def download_export(filename):
+    exports_dir = Config.EXPORTS_DIR if hasattr(Config, 'EXPORTS_DIR') else os.path.join(INSTANCE_DIR, 'exports')
+    return send_from_directory(exports_dir, filename, as_attachment=True)
 
 
 # ─────────────────────────── Admin-on-student actions ───────────────────────────
