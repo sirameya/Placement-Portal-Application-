@@ -24,7 +24,7 @@ celery = Celery(
 celery.conf.beat_schedule = {
     "daily-application-reminders": {
         "task": "services.tasks.send_daily_reminders",
-        "schedule": crontab(hour=18, minute=0),  # every day at 6 PM
+        "schedule": crontab(hour=19, minute=30),  # every day at 7:30 PM
     },
     "monthly-activity-report": {
         "task": "services.tasks.send_monthly_report",

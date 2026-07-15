@@ -4,7 +4,7 @@
       <div class="brand-wrap">
         <div class="brand-badge">P</div>
         <div>
-          <h4>Placement Portal</h4>
+          <h4>PlacementPulse</h4>
           <p>Campus hiring made simple</p>
         </div>
       </div>
@@ -51,6 +51,7 @@ export default {
   padding: 1rem 2rem;
   background: rgba(255,255,255,0.95);
   box-shadow: 0 8px 30px rgba(17,33,58,0.08);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 .brand-wrap {
   display: flex;
@@ -97,6 +98,11 @@ export default {
   background: #111827;
   color: white;
   cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.ghost-btn:hover {
+  transform: translateY(-1px);
+  background: #1f2937;
 }
 .page-content {
   padding: 1.5rem 2rem 2.5rem;

@@ -22,6 +22,7 @@ from controllers.auth import auth_bp
 from controllers.students import students_bp
 from controllers.companies import companies_bp
 from controllers.drives import drives_bp
+from controllers.debug import debug_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -48,6 +49,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(students_bp)
 app.register_blueprint(companies_bp)
 app.register_blueprint(drives_bp)
+app.register_blueprint(debug_bp)
 
 
 def create_tables_and_seed_admin():

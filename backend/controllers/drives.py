@@ -419,4 +419,10 @@ def stats():
         "total_companies": CompanyProfile.query.filter_by(approval_status="approved").count(),
         "total_drives": Job.query.filter_by(approval_status="approved").count(),
         "total_selected": Application.query.filter_by(status="selected").count(),
+        "application_status_counts": {
+            "applied": Application.query.filter_by(status="applied").count(),
+            "shortlisted": Application.query.filter_by(status="shortlisted").count(),
+            "selected": Application.query.filter_by(status="selected").count(),
+            "rejected": Application.query.filter_by(status="rejected").count(),
+        },
     })
