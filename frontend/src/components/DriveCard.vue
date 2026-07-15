@@ -37,7 +37,12 @@ export default {
   border-radius: 16px;
   padding: 1rem;
   background: linear-gradient(135deg, #ffffff, #f8fbff);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.drive-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
 }
 .drive-main {
   display: flex;
@@ -48,6 +53,7 @@ export default {
 .drive-main h6 {
   margin: 0 0 0.25rem;
   font-weight: 700;
+  color: #0f172a;
 }
 .company-line {
   margin: 0;
@@ -56,28 +62,28 @@ export default {
 }
 .meta-line {
   margin: 0.3rem 0 0;
-  color: #64748b;
-  font-size: 0.9rem;
+  color: #475569;
+  font-size: 0.92rem;
 }
 .apply-btn {
   border: none;
   border-radius: 999px;
-  padding: 0.55rem 0.95rem;
+  padding: 0.55rem 1rem;
   background: linear-gradient(135deg, #2563eb, #4f46e5);
   color: white;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.25s ease, opacity 0.25s ease;
 }
 .apply-btn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-2px);
+  opacity: 0.94;
+  transform: translateY(-1px);
 }
 .apply-btn:disabled {
   background: #cbd5e1;
   color: #475569;
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 .apply-btn.applied {
   background: #10b981;
@@ -85,7 +91,10 @@ export default {
 @media (max-width: 700px) {
   .drive-main {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+  .apply-btn {
+    width: 100%;
   }
 }
 </style>

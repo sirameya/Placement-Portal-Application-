@@ -5,6 +5,7 @@
         <h3 class="mb-1">Admin Dashboard</h3>
         <p class="text-muted mb-0">Manage companies, review drives, and monitor placement activity.</p>
       </div>
+      <router-link class="btn btn-outline-primary" to="/admin/charts">View Charts</router-link>
     </div>
 
     <div v-if="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
@@ -45,6 +46,7 @@
           </div>
         </div>
       </div>
+
       <p class="text-muted mt-4">Use the Companies and Drives tabs to manage registrations and approvals.</p>
     </div>
 
@@ -132,7 +134,16 @@
         <div class="col-lg-12">
           <div class="card shadow-sm">
             <div class="card-body">
-              <h5 class="card-title">All Placement Drives</h5>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h5 class="card-title mb-0">All Placement Drives</h5>
+                </div>
+                <div class="d-flex gap-2">
+                  <input v-model="driveSearch" class="form-control" style="min-width: 240px;" placeholder="Search drives" @keyup.enter="searchDrives" />
+                  <button class="btn btn-outline-primary" @click="searchDrives">Search</button>
+                  <button class="btn btn-outline-secondary" @click="resetDriveSearch">Reset</button>
+                </div>
+              </div>
               <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                   <thead>
@@ -183,6 +194,39 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4 mt-3">
+        <div class="col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Notification Status</h5>
+              <p class="text-muted">Checks whether email or webhook notifications are configured.</p>
+              <div v-if="notificationStatus">
+                <p><span class="badge" :class="notificationStatus.mail_ready ? 'bg-success' : 'bg-secondary'">Email {{ notificationStatus.mail_ready ? 'Ready' : 'Not configured' }}</span></p>
+                <p><span class="badge" :class="notificationStatus.webhook_ready ? 'bg-success' : 'bg-secondary'">Webhook {{ notificationStatus.webhook_ready ? 'Ready' : 'Not configured' }}</span></p>
+                <p class="text-muted">Notifications ready: <strong>{{ notificationStatus.notifications_ready ? 'Yes' : 'No' }}</strong></p>
+              </div>
+              <div v-else class="text-muted">Loading notification status...</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Reports</h5>
+              <p class="text-muted">Download latest generated reports from scheduled tasks.</p>
+              <div v-if="reports.length > 0">
+                <ul class="list-unstyled mb-0">
+                  <li v-for="report in reports" :key="report.name" class="mb-2">
+                    <a :href="report.url" target="_blank">{{ report.name }}</a>
+                  </li>
+                </ul>
+              </div>
+              <div v-else class="text-muted">No reports available yet.</div>
             </div>
           </div>
         </div>
@@ -299,6 +343,9 @@ export default {
       applications: [],
       pendingCompanies: [],
       pendingDrives: [],
+      reports: [],
+      notificationStatus: null,
+      driveSearch: '',
       companySearch: '',
       studentSearch: '',
       errorMessage: '',
@@ -323,6 +370,8 @@ export default {
       this.loadAllApplications(),
       this.loadPendingCompanies(),
       this.loadPendingDrives(),
+      this.loadReports(),
+      this.loadNotificationStatus(),
     ])
   },
   methods: {
@@ -374,25 +423,74 @@ export default {
         this.errorMessage = err.message
       }
     },
+    async loadReports() {
+      try {
+        const response = await apiRequest('/drives/reports', { token: this.auth.token })
+        this.reports = response.reports || []
+      } catch (err) {
+        this.errorMessage = err.message
+      }
+    },
+    async loadNotificationStatus() {
+      try {
+        this.notificationStatus = await apiRequest('/drives/notifications/status', { token: this.auth.token })
+      } catch (err) {
+        this.errorMessage = err.message
+      }
+    },
+    async searchDrives() {
+      const query = this.driveSearch.trim()
+      try {
+        const results = await apiRequest(`/drives/search?q=${encodeURIComponent(query)}`, { token: this.auth.token })
+        this.drives = results.map((drive) => ({
+          ...drive,
+          status: drive.approval_status || drive.status || 'approved',
+        }))
+      } catch (err) {
+        this.errorMessage = err.message
+      }
+    },
+    async resetDriveSearch() {
+      this.driveSearch = ''
+      await this.loadDrives()
+    },
     async approveCompany(id) {
-      await apiRequest(`/companies/${id}/approve`, { method: 'POST', token: this.auth.token })
-      await this.loadCompanies()
-      await this.loadPendingCompanies()
+      try {
+        await apiRequest(`/companies/${id}/approve`, { method: 'POST', token: this.auth.token })
+        await this.loadStats()
+        await this.loadCompanies()
+        await this.loadPendingCompanies()
+      } catch (err) {
+        this.errorMessage = err.message
+      }
     },
     async rejectCompany(id) {
-      await apiRequest(`/companies/${id}/reject`, { method: 'POST', token: this.auth.token })
-      await this.loadCompanies()
-      await this.loadPendingCompanies()
+      try {
+        await apiRequest(`/companies/${id}/reject`, { method: 'POST', token: this.auth.token })
+        await this.loadCompanies()
+        await this.loadPendingCompanies()
+      } catch (err) {
+        this.errorMessage = err.message
+      }
     },
     async approveDrive(id) {
-      await apiRequest(`/drives/${id}/approve`, { method: 'POST', token: this.auth.token })
-      await this.loadDrives()
-      await this.loadPendingDrives()
+      try {
+        await apiRequest(`/drives/${id}/approve`, { method: 'POST', token: this.auth.token })
+        await this.loadStats()
+        await this.loadDrives()
+        await this.loadPendingDrives()
+      } catch (err) {
+        this.errorMessage = err.message
+      }
     },
     async rejectDrive(id) {
-      await apiRequest(`/drives/${id}/reject`, { method: 'POST', token: this.auth.token })
-      await this.loadDrives()
-      await this.loadPendingDrives()
+      try {
+        await apiRequest(`/drives/${id}/reject`, { method: 'POST', token: this.auth.token })
+        await this.loadDrives()
+        await this.loadPendingDrives()
+      } catch (err) {
+        this.errorMessage = err.message
+      }
     },
     async loadStudents() {
       try {

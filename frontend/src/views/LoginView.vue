@@ -2,7 +2,7 @@
   <div class="auth-layout">
     <section class="hero-card">
       <div class="hero-copy">
-        <p class="eyebrow">Placement Platform</p>
+        <p class="eyebrow">PlacementPulse</p>
         <h1>Connect students, companies, and recruiters in one place.</h1>
         <p class="subtext">Track opportunities, apply faster, and manage hiring pipelines effortlessly.</p>
         <div class="hero-highlights">
@@ -13,8 +13,13 @@
       </div>
 
       <div class="form-card">
-        <h3>Welcome back</h3>
-        <p class="form-subtext">Sign in to continue your hiring journey.</p>
+        <div class="form-header d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h3>Welcome back</h3>
+            <p class="form-subtext">Sign in to continue your hiring journey.</p>
+          </div>
+          <span class="badge badge-pill bg-primary text-white">Secure login</span>
+        </div>
 
         <form ref="loginForm" @submit.prevent="handleLogin">
           <div class="mb-3">
@@ -154,6 +159,9 @@ export default {
 @media (max-width: 900px) {
   .hero-card {
     grid-template-columns: 1fr;
+  }
+  .hero-copy {
+    padding: 0;
   }
 }
 </style>

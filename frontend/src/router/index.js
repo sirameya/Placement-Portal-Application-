@@ -8,6 +8,7 @@ import { useAuthStore } from '../stores/auth'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import AdminDashboard from '../views/AdminDashboard.vue'
+import AdminCharts from '../views/AdminCharts.vue'
 import CompanyDashboard from '../views/CompanyDashboard.vue'
 import StudentDashboard from '../views/StudentDashboard.vue'
 
@@ -17,6 +18,7 @@ const routes = [
   { path: '/register', component: RegisterView },
   // meta.role: only a logged-in user with THIS role may visit this route
   { path: '/admin', component: AdminDashboard, meta: { role: 'admin' } },
+  { path: '/admin/charts', component: AdminCharts, meta: { role: 'admin' } },
   { path: '/company', component: CompanyDashboard, meta: { role: 'company' } },
   { path: '/student', component: StudentDashboard, meta: { role: 'student' } },
 ]

@@ -41,6 +41,48 @@ def my_profile():
     })
 
 
+@companies_bp.route("/me", methods=["PATCH"])
+@role_required("company")
+def update_my_profile():
+    """Allow a company to update its own profile details."""
+    company = _get_company_profile()
+    data = request.get_json() or {}
+    editable_fields = [
+        "company_name",
+        "hr_contact",
+        "website",
+        "industry",
+        "address",
+        "contact_email",
+        "phone_number",
+        "description",
+        "employee_count",
+    ]
+
+    for field in editable_fields:
+        if field in data:
+            setattr(company, field, data[field])
+
+    db.session.commit()
+    cache.clear()
+    return jsonify({
+        "message": "Company profile updated",
+        "company": {
+            "company_name": company.company_name,
+            "hr_contact": company.hr_contact,
+            "website": company.website,
+            "industry": company.industry,
+            "address": company.address,
+            "contact_email": company.contact_email,
+            "phone_number": company.phone_number,
+            "description": company.description,
+            "employee_count": company.employee_count,
+            "approval_status": company.approval_status,
+            "drives_created": len(company.jobs),
+        },
+    })
+
+
 # ─────────────────────────── Admin-on-company actions ───────────────────────────
 
 @companies_bp.route("/all", methods=["GET"])
@@ -84,6 +126,7 @@ def approve(company_id):
     company = CompanyProfile.query.get_or_404(company_id)
     company.approval_status = "approved"
     db.session.commit()
+    cache.clear()
     return jsonify({"message": f"{company.company_name} approved"})
 
 
@@ -93,6 +136,7 @@ def reject(company_id):
     company = CompanyProfile.query.get_or_404(company_id)
     company.approval_status = "rejected"
     db.session.commit()
+    cache.clear()
     return jsonify({"message": f"{company.company_name} rejected"})
 
 
@@ -130,4 +174,5 @@ def toggle_company_active(company_id):
     company = CompanyProfile.query.get_or_404(company_id)
     company.user.is_active = not company.user.is_active
     db.session.commit()
+    cache.clear()
     return jsonify({"message": f"Company account {'activated' if company.user.is_active else 'deactivated'}"})

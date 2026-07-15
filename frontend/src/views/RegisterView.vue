@@ -1,6 +1,7 @@
 <template>
-  <div class="container mt-5" style="max-width: 450px;">
-    <h3 class="mb-4">Register</h3>
+  <div class="auth-page">
+    <div class="auth-box">
+      <h3 class="mb-4">Register</h3>
 
     <form ref="registerForm" @submit.prevent="handleRegister">
       <div class="mb-3">
@@ -185,10 +186,11 @@
       </button>
     </form>
 
-    <p class="mt-3 text-center">
+    <p class="mt-3 text-center small-text">
       Already have an account? <router-link to="/login">Login here</router-link>
     </p>
   </div>
+</div>
 </template>
 
 <script>
@@ -282,3 +284,39 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem 3rem;
+  min-height: calc(100vh - 100px);
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+}
+.auth-box {
+  width: min(580px, 100%);
+  background: white;
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+}
+.auth-box h3 {
+  margin-bottom: 0.5rem;
+}
+.form-header {
+  gap: 0.5rem;
+}
+.badge-pill {
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
+}
+.small-text {
+  color: #64748b;
+}
+@media (max-width: 768px) {
+  .auth-box {
+    padding: 1.5rem;
+  }
+}
+</style>

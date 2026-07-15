@@ -270,4 +270,5 @@ def toggle_student_active(student_id):
     student = StudentProfile.query.get_or_404(student_id)
     student.user.is_active = not student.user.is_active
     db.session.commit()
+    cache.clear()
     return jsonify({"message": f"Student account {'activated' if student.user.is_active else 'deactivated'}"})
