@@ -64,6 +64,13 @@
     <!-- Browse & apply tab -->
     <div v-if="activeTab === 'browse'">
       <!-- Sub-tabs for eligible vs all drives -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="input-group" style="max-width: 640px;">
+          <input v-model="driveSearch" class="form-control" placeholder="Search drives" @keyup.enter="searchDrives" />
+          <button class="btn btn-outline-primary" type="button" @click="searchDrives">Search</button>
+          <button class="btn btn-outline-secondary" type="button" @click="resetDriveSearch">Reset</button>
+        </div>
+      </div>
       <ul class="nav nav-tabs mb-3 ms-3">
         <li class="nav-item">
           <a class="nav-link" :class="{ active: browseSubTab === 'eligible' }" href="#" @click.prevent="browseSubTab = 'eligible'">
@@ -307,6 +314,7 @@ export default {
       },
       drives: [],
       applications: [],
+      driveSearch: '',
       errorMessage: '',
       selectedResumeFile: null,
       uploading: false,
@@ -418,6 +426,22 @@ export default {
       } catch (err) {
         this.errorMessage = err.message
       }
+    },
+    async searchDrives() {
+      try {
+        const query = this.driveSearch.trim()
+        if (!query) {
+          await this.loadDrives()
+          return
+        }
+        this.drives = await apiRequest(`/drives/search?q=${encodeURIComponent(query)}`, { token: this.auth.token })
+      } catch (err) {
+        this.errorMessage = err.message
+      }
+    },
+    async resetDriveSearch() {
+      this.driveSearch = ''
+      await this.loadDrives()
     },
     async exportApplications() {
       this.exporting = true

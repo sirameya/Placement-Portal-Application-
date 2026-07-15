@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+backend/.env
+backend/instance/
+backend/celerybeat-schedule*
+*.sqlite3
+*.db
+*.db-journal
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+frontend/dist/assets/
+
+# IDE
+.vscode/

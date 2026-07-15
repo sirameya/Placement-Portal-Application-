@@ -4,6 +4,9 @@ scattered across files. Other files import `Config` and read from it.
 """
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', '.env'))
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))  # .../backend/controllers
 INSTANCE_DIR = os.path.join(BASE_DIR, "..", "instance")
@@ -21,10 +24,11 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = 60 * 60 * 8  # 8 hours, in seconds
 
     # --- Celery (background jobs) + Redis (broker + cache) ---
-    CELERY_BROKER_URL = "redis://localhost:6379/0"
-    CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
-    CACHE_TYPE = "RedisCache"
-    CACHE_REDIS_URL = "redis://localhost:6379/1"
+    REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+    CELERY_BROKER_URL = REDIS_URL
+    CELERY_RESULT_BACKEND = REDIS_URL
+    # Use in-memory cache by default in development, so Redis is optional.
+    CACHE_TYPE = "SimpleCache"
     CACHE_DEFAULT_TIMEOUT = 300
 
     # --- Mail (for reminders / reports) ---
@@ -43,4 +47,5 @@ class Config:
 
     # Local storage paths (inside instance/)
     EXPORTS_DIR = os.path.join(INSTANCE_DIR, "exports")
+    REPORTS_DIR = os.path.join(INSTANCE_DIR, "reports")
     UPLOADS_DIR = os.path.join(INSTANCE_DIR, "uploads")

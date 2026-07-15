@@ -9,7 +9,14 @@ import smtplib
 from email.message import EmailMessage
 from datetime import datetime
 import json
-from weasyprint import HTML
+
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except Exception as exc:  # pragma: no cover - depends on system libraries
+    HTML = None
+    WEASYPRINT_AVAILABLE = False
+    WEASYPRINT_IMPORT_ERROR = str(exc)
 
 from flask import Flask
 from services.celery_app import celery
@@ -75,25 +82,41 @@ def send_monthly_report():
           </body>
         </html>
         """
-        pdf_buffer = io.BytesIO()
-        HTML(string=html_report).write_pdf(pdf_buffer)
-        pdf_bytes = pdf_buffer.getvalue()
-
         reports_dir = os.path.join(INSTANCE_DIR, 'reports')
         os.makedirs(reports_dir, exist_ok=True)
-        pdf_path = os.path.join(reports_dir, f"monthly_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf")
-        with open(pdf_path, 'wb') as out_file:
-            out_file.write(pdf_bytes)
+        pdf_path = None
+        pdf_bytes = None
+
+        if WEASYPRINT_AVAILABLE and HTML is not None:
+            try:
+                pdf_buffer = io.BytesIO()
+                HTML(string=html_report).write_pdf(pdf_buffer)
+                pdf_bytes = pdf_buffer.getvalue()
+                pdf_path = os.path.join(reports_dir, f"monthly_report_{datetime.utcnow().strftime('%Y%m%d')}.pdf")
+                with open(pdf_path, 'wb') as out_file:
+                    out_file.write(pdf_bytes)
+            except Exception as exc:
+                print(f"[MONTHLY REPORT] PDF generation failed: {exc}")
+                pdf_path = None
+
+        if pdf_path is None:
+            html_path = os.path.join(reports_dir, f"monthly_report_{datetime.utcnow().strftime('%Y%m%d')}.html")
+            with open(html_path, 'w', encoding='utf-8') as out_file:
+                out_file.write(html_report)
+            pdf_path = html_path
 
         # Send to configured admin email (ADMIN_EMAIL or MAIL_USERNAME) if present
         admin_email = getattr(Config, 'ADMIN_EMAIL', None) or Config.MAIL_USERNAME or None
         if admin_email:
-            _send_email(to_addr=admin_email, subject="Monthly Placement Report", body=html_report, html=True)
-            _send_email(to_addr=admin_email, subject="Monthly Placement Report PDF", body=f"PDF report attached: {pdf_path}", attachment_bytes=pdf_bytes, attachment_name="monthly_report.pdf")
+            if pdf_bytes is not None and pdf_path.endswith('.pdf'):
+                _send_email(to_addr=admin_email, subject="Monthly Placement Report", body=html_report, html=True)
+                _send_email(to_addr=admin_email, subject="Monthly Placement Report PDF", body=f"PDF report attached: {pdf_path}", attachment_bytes=pdf_bytes, attachment_name="monthly_report.pdf")
+            else:
+                _send_email(to_addr=admin_email, subject="Monthly Placement Report", body=html_report, html=True)
 
         # Also POST to webhook if configured
         if getattr(Config, 'NOTIFICATION_WEBHOOK_URL', None):
-            _post_webhook(Config.NOTIFICATION_WEBHOOK_URL, {"type": "monthly_report", "html": html_report, "pdf_path": pdf_path})
+            _post_webhook(Config.NOTIFICATION_WEBHOOK_URL, {"type": "monthly_report", "html": html_report, "pdf_path": pdf_path, "pdf_generated": pdf_bytes is not None})
 
         print("[MONTHLY REPORT] Generated and delivered (attempted)")
         return pdf_path
